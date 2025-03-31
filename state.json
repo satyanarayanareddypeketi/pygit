@@ -1,0 +1,55 @@
+{
+"Comment": "Lambda Optimization and Testing Workflow",
+"StartAt": "LambdaValidation",
+"States": {
+"LambdaValidation": {
+"Type": "Task",
+"Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:CheckLambdaFunctionExistence",
+"ResultPath": "$.lambda_validation",
+"Next": "CheckLambdaExistenceSuccess",
+"Catch": [
+{
+"ErrorEquals": ["States.ALL"],
+"Next": "LambdaNotFoundError"
+}
+]
+},
+"CheckLambdaExistenceSuccess": {
+"Type": "Choice",
+"Choices": [
+{
+"Variable": "$.lambda_validation.exists",
+"BooleanEquals": true,
+"Next": "RunLambdaTests"
+},
+{
+"Variable": "$.lambda_validation.exists",
+"BooleanEquals": false,
+"Next": "LambdaNotFoundError"
+}
+]
+},
+"RunLambdaTests": {
+"Type": "Task",
+"Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:RunLambdaPerformanceTests",
+"ResultPath": "$.test_results",
+"Next": "Aggregator"
+},
+"Aggregator": {
+"Type": "Task",
+"Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:AggregatorFunction",
+"ResultPath": "$.aggregated_results",
+"Next": "Cleanup"
+},
+"LambdaNotFoundError": {
+"Type": "Fail",
+"Error": "LambdaFunctionNotFound",
+"Cause": "$.lambda_validation.message"
+},
+"Cleanup": {
+"Type": "Task",
+"Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:CleanupResources",
+"End": true
+}
+}
+}
